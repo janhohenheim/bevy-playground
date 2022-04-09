@@ -2,4 +2,5 @@
 resolver = "2" # Important! wgpu/Bevy needs this!
 members = [
     "hello-world",
+    "hello-bevy",
 ]
