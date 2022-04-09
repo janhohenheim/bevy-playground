@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use board_plugin::resources::BoardOptions;
 use board_plugin::BoardPlugin;
 
 #[cfg(feature = "debug")]
@@ -13,10 +14,17 @@ fn main() {
         ..Default::default()
     })
     .add_plugins(DefaultPlugins)
-    .add_plugin(BoardPlugin)
     .add_startup_system(camera_setup);
+
     #[cfg(feature = "debug")]
     app.add_plugin(WorldInspectorPlugin::new());
+
+    app.add_plugin(BoardPlugin).insert_resource(BoardOptions {
+        map_size: (20, 20),
+        mine_count: 40,
+        tile_padding: 3.,
+        ..Default::default()
+    });
     app.run();
 }
 
