@@ -1,6 +1,7 @@
 mod entities;
 mod plugins;
 mod systems;
+mod resources;
 
 use bevy::prelude::*;
 use plugins::*;

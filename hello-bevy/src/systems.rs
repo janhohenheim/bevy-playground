@@ -1,9 +1,6 @@
 use crate::entities::{Name, *};
+use crate::resources::*;
 use bevy::prelude::*;
-
-pub(crate) fn hello_world() {
-    println!("Hello, world!");
-}
 
 pub(crate) fn add_people(mut commands: Commands) {
     commands
@@ -22,8 +19,16 @@ pub(crate) fn add_people(mut commands: Commands) {
         .insert(Name("Bob".to_string()));
 }
 
-pub(crate) fn greet_people(query: Query<&Name, With<Person>>) {
-    for name in query.iter() {
-        println!("Hello, {}!", name.0);
+pub(crate) fn greet_people(
+    time: Res<Time>,
+    mut timer: ResMut<GreetTimer>,
+    query: Query<&Name, With<Person>>,
+) {
+    // Update our timer with the time elapsed since the last update
+    // if that caused the timer to finish, we can greet everyone
+    if timer.0.tick(time.delta()).just_finished() {
+        for name in query.iter() {
+            println!("Hello, {}!", name.0);
+        }
     }
 }
