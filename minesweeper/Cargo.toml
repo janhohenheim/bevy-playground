@@ -3,6 +3,11 @@ name = "minesweeper"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = []
+debug = ["board-plugin/debug", "bevy-inspector-egui"]
 
 [dependencies]
+bevy = "0.6"
+board-plugin = { path = "../board-plugin" }
+bevy-inspector-egui = { version = "0.8", optional = true }
