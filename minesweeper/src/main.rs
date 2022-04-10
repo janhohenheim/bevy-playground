@@ -23,6 +23,7 @@ fn main() {
         map_size: (20, 20),
         mine_count: 40,
         tile_padding: 3.,
+        safe_start: true,
         ..Default::default()
     });
     app.run();

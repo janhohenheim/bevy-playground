@@ -48,6 +48,7 @@ pub fn create_board(
     };
 
     let mut covered_tiles = HashMap::with_capacity((tile_map.width * tile_map.height).into());
+    let mut safe_start_entity = None;
 
     commands
         .spawn()
@@ -76,7 +77,13 @@ pub fn create_board(
                 size: tile_size,
                 padding: options.tile_padding,
             };
-            spawn_tiles(parent, &tile_map, tile_graphics, &mut covered_tiles);
+            spawn_tiles(
+                parent,
+                &tile_map,
+                tile_graphics,
+                &mut covered_tiles,
+                &mut safe_start_entity,
+            );
         });
 
     commands.insert_resource(Board {
@@ -88,6 +95,12 @@ pub fn create_board(
         tile_size,
         covered_tiles,
     });
+
+    if options.safe_start {
+        if let Some(entity) = safe_start_entity {
+            commands.entity(entity).insert(Uncovered);
+        }
+    }
 }
 
 fn calculate_adaptative_tile_size(
@@ -117,6 +130,7 @@ fn spawn_tiles(
     tile_map: &TileMap,
     graphics: TileGraphics,
     covered_tiles: &mut HashMap<Coordinates, Entity>,
+    safe_start_entity: &mut Option<Entity>,
 ) {
     for (y, line) in tile_map.iter().enumerate() {
         for (x, tile) in line.iter().enumerate() {
@@ -157,6 +171,9 @@ fn spawn_tiles(
                     .insert(Name::new("Tile Cover"))
                     .id();
                 covered_tiles.insert(coordinates, entity);
+                if safe_start_entity.is_none() && *tile == Tile::Empty {
+                    *safe_start_entity = Some(entity);
+                }
             });
 
             match tile {
