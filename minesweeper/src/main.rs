@@ -1,5 +1,6 @@
 use bevy::log;
 use bevy::prelude::*;
+use board_plugin::assets::{board::BoardAssets, SpriteMaterial};
 use board_plugin::resources::BoardOptions;
 use board_plugin::BoardPlugin;
 
@@ -29,18 +30,12 @@ fn main() {
     // If this is moved further down, we get an error for some reason
     app.add_plugin(WorldInspectorPlugin::new());
 
-    app.add_state(AppState::InGame)
+    app.add_state(AppState::Out)
         .add_plugin(BoardPlugin::<AppState> {
             current_state: AppState::InGame,
         })
         .add_system(state_handler)
-        .insert_resource(BoardOptions {
-            map_size: (20, 20),
-            mine_count: 40,
-            tile_padding: 3.,
-            safe_start: true,
-            ..Default::default()
-        });
+        .add_startup_system(setup_board);
 
     app.run();
 }
@@ -50,6 +45,48 @@ fn camera_setup(mut commands: Commands) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 }
 
+fn setup_board(
+    mut commands: Commands,
+    mut state: ResMut<State<AppState>>,
+    asset_server: Res<AssetServer>,
+) {
+    commands.insert_resource(BoardOptions {
+        map_size: (20, 20),
+        mine_count: 40,
+        tile_padding: 3.,
+        safe_start: true,
+        ..Default::default()
+    });
+    commands.insert_resource(BoardAssets {
+        label: "Default".to_string(),
+        board_material: SpriteMaterial {
+            color: Color::WHITE,
+            ..Default::default()
+        },
+        tile_material: SpriteMaterial {
+            color: Color::DARK_GRAY,
+            ..Default::default()
+        },
+        covered_tile_material: SpriteMaterial {
+            color: Color::GRAY,
+            ..Default::default()
+        },
+        mine_material: SpriteMaterial {
+            color: Color::WHITE,
+            texture: asset_server.load("sprites/mine.png"),
+        },
+        flag_material: SpriteMaterial {
+            color: Color::WHITE,
+            texture: asset_server.load("sprites/flag.png"),
+        },
+        neighbor_font: asset_server.load("fonts/pixeled.ttf"),
+        mine_counter_colors: BoardAssets::default_colors(),
+    });
+
+    state.set(AppState::InGame).unwrap_or_else(|err| {
+        panic!("Failed to initialize game: {}", err);
+    });
+}
 fn state_handler(mut state: ResMut<State<AppState>>, keys: Res<Input<KeyCode>>) {
     if keys.just_pressed(KeyCode::C) {
         log::debug!("clearing detected");

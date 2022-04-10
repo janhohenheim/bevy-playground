@@ -1,3 +1,4 @@
+use crate::assets::board::BoardAssets;
 use crate::bounds::Bounds2;
 use crate::components::*;
 use crate::resources::*;
@@ -12,11 +13,8 @@ pub fn create_board(
     mut commands: Commands,
     board_options: Option<Res<BoardOptions>>,
     windows: Res<Windows>,
-    asset_server: Res<AssetServer>,
+    board_assets: Res<BoardAssets>,
 ) {
-    let font = asset_server.load("fonts/pixeled.ttf");
-    let mine_image = asset_server.load("sprites/mine.png");
-
     let options = match board_options {
         None => Default::default(),
         Some(options) => options.clone(),
@@ -60,27 +58,25 @@ pub fn create_board(
             parent
                 .spawn_bundle(SpriteBundle {
                     sprite: Sprite {
-                        color: Color::WHITE,
+                        color: board_assets.board_material.color,
                         custom_size: Some(board_size),
                         ..Default::default()
                     },
+                    texture: board_assets.board_material.texture.clone(),
                     transform: Transform::from_xyz(board_size.x / 2., board_size.y / 2., 0.),
                     ..Default::default()
                 })
                 .insert(Name::new("Board Background"));
 
-            let tile_graphics = TileGraphics {
-                tile_color: Color::GRAY,
-                mine_image,
-                font,
-                covered_tile_color: Color::DARK_GRAY,
+            let graphic_options = TileGraphicOptions {
                 size: tile_size,
                 padding: options.tile_padding,
             };
             spawn_tiles(
                 parent,
                 &tile_map,
-                tile_graphics,
+                &board_assets,
+                &graphic_options,
                 &mut covered_tiles,
                 &mut safe_start_entity,
             );
@@ -118,19 +114,21 @@ fn calculate_adaptative_tile_size(
     max_width.min(max_height).clamp(min, max)
 }
 
-struct TileGraphics {
-    tile_color: Color,
-    mine_image: Handle<Image>,
-    font: Handle<Font>,
-    covered_tile_color: Color,
+struct TileGraphicOptions {
     size: f32,
     padding: f32,
+}
+impl TileGraphicOptions {
+    fn effective_sprite_size(&self) -> f32 {
+        self.size - self.padding
+    }
 }
 
 fn spawn_tiles(
     parent: &mut ChildBuilder,
     tile_map: &TileMap,
-    graphics: TileGraphics,
+    assets: &BoardAssets,
+    graphic_options: &TileGraphicOptions,
     covered_tiles: &mut HashMap<Coordinates, Entity>,
     safe_start_entity: &mut Option<Entity>,
 ) {
@@ -144,16 +142,17 @@ fn spawn_tiles(
             let mut cmd = parent.spawn();
             cmd.insert_bundle(SpriteBundle {
                 sprite: Sprite {
-                    color: graphics.tile_color,
-                    custom_size: Some(Vec2::splat(graphics.size - graphics.padding as f32)),
+                    color: assets.tile_material.color,
+                    custom_size: Some(Vec2::splat(graphic_options.effective_sprite_size())),
                     ..Default::default()
                 },
                 transform: Transform::from_xyz(
-                    (x as f32 * graphics.size) + (graphics.size / 2.),
-                    (y as f32 * graphics.size) + (graphics.size / 2.),
+                    (x as f32 * graphic_options.size) + (graphic_options.size / 2.),
+                    (y as f32 * graphic_options.size) + (graphic_options.size / 2.),
                     // Closer to camera -> Drawn over background
                     1.,
                 ),
+                texture: assets.tile_material.texture.clone(),
                 ..Default::default()
             })
             .insert(Name::new(format!("Tile ({}, {})", x, y)))
@@ -163,11 +162,12 @@ fn spawn_tiles(
                 let entity = parent
                     .spawn_bundle(SpriteBundle {
                         sprite: Sprite {
-                            custom_size: Some(Vec2::splat(graphics.size - graphics.padding as f32)),
-                            color: graphics.covered_tile_color,
+                            custom_size: Some(Vec2::splat(graphic_options.effective_sprite_size())),
+                            color: assets.covered_tile_material.color,
                             ..Default::default()
                         },
                         transform: Transform::from_xyz(0., 0., 2.),
+                        texture: assets.covered_tile_material.texture.clone(),
                         ..Default::default()
                     })
                     .insert(Name::new("Tile Cover"))
@@ -183,11 +183,14 @@ fn spawn_tiles(
                     cmd.insert(Mine).with_children(|parent| {
                         parent.spawn_bundle(SpriteBundle {
                             sprite: Sprite {
-                                custom_size: Some(Vec2::splat(graphics.size - graphics.padding)),
+                                custom_size: Some(Vec2::splat(
+                                    graphic_options.effective_sprite_size(),
+                                )),
+                                color: assets.mine_material.color,
                                 ..Default::default()
                             },
                             transform: Transform::from_xyz(0., 0., 1.),
-                            texture: graphics.mine_image.clone(),
+                            texture: assets.mine_material.texture.clone(),
                             ..Default::default()
                         });
                     });
@@ -197,8 +200,8 @@ fn spawn_tiles(
                         .with_children(|parent| {
                             parent.spawn_bundle(create_mine_count_text_bundle(
                                 *count,
-                                graphics.font.clone(),
-                                graphics.size - graphics.padding,
+                                assets,
+                                graphic_options.effective_sprite_size(),
                             ));
                         });
                 }
@@ -209,22 +212,16 @@ fn spawn_tiles(
 }
 
 /// Generates the mine counter text 2D bundle for a given count
-fn create_mine_count_text_bundle(count: u8, font: Handle<Font>, size: f32) -> Text2dBundle {
+fn create_mine_count_text_bundle(count: u8, board_assets: &BoardAssets, size: f32) -> Text2dBundle {
     let text = count.to_string();
-    let color = match count {
-        1 => Color::WHITE,
-        2 => Color::GREEN,
-        3 => Color::YELLOW,
-        4 => Color::ORANGE,
-        _ => Color::PURPLE,
-    };
+    let color = board_assets.get_mine_counter_color(count);
     Text2dBundle {
         text: Text {
             sections: vec![TextSection {
                 value: text,
                 style: TextStyle {
                     color,
-                    font,
+                    font: board_assets.neighbor_font.clone(),
                     font_size: size,
                 },
             }],

@@ -1,3 +1,4 @@
+pub mod assets;
 mod bounds;
 pub mod components;
 mod events;
