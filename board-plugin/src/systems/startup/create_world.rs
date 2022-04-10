@@ -1,6 +1,8 @@
+use crate::bounds::Bounds2;
 use crate::components::*;
 use crate::resources::*;
 use bevy::log;
+use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 
 /// System to generate the complete Board
@@ -72,6 +74,15 @@ pub fn create_board(
                 font,
             );
         });
+
+    commands.insert_resource(Board {
+        tile_map,
+        bounds: Bounds2 {
+            position: board_position.xy(),
+            size: board_size,
+        },
+        tile_size,
+    });
 }
 
 fn calculate_adaptative_tile_size(
