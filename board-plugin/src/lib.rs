@@ -14,7 +14,8 @@ pub struct BoardPlugin;
 
 impl Plugin for BoardPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(systems::startup::create_board);
+        app.add_startup_system(systems::startup::create_board)
+            .add_system(systems::input_handling);
         log::info!("Loaded board plugin");
         #[cfg(feature = "debug")]
         {
