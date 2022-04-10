@@ -1,3 +1,4 @@
+use bevy::log;
 use bevy::prelude::*;
 use board_plugin::resources::BoardOptions;
 use board_plugin::BoardPlugin;
@@ -30,6 +31,7 @@ fn main() {
         .add_plugin(BoardPlugin::<AppState> {
             current_state: AppState::InGame,
         })
+        .add_system(state_handler)
         .insert_resource(BoardOptions {
             map_size: (20, 20),
             mine_count: 40,
@@ -44,4 +46,26 @@ fn main() {
 fn camera_setup(mut commands: Commands) {
     // 2D orthographic camera
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+}
+
+fn state_handler(mut state: ResMut<State<AppState>>, keys: Res<Input<KeyCode>>) {
+    if keys.just_pressed(KeyCode::C) {
+        log::debug!("clearing detected");
+        if state.current() == &AppState::InGame {
+            log::info!("clearing game");
+            state
+                .set(AppState::Out)
+                .unwrap_or_else(|error| panic!("Failed to clear game: {}", error))
+        }
+    }
+
+    if keys.just_pressed(KeyCode::G) {
+        log::debug!("loading detected");
+        if state.current() == &AppState::Out {
+            log::info!("loading game");
+            state
+                .set(AppState::InGame)
+                .unwrap_or_else(|error| panic!("Failed to load game: {}", error))
+        }
+    }
 }
