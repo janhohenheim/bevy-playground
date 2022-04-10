@@ -4,6 +4,8 @@ use crate::resources::*;
 use bevy::log;
 use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
+use bevy::utils::AHashExt;
+use bevy::utils::HashMap;
 
 /// System to generate the complete Board
 pub fn create_board(
@@ -45,6 +47,8 @@ pub fn create_board(
         BoardPosition::Custom(position) => position,
     };
 
+    let mut covered_tiles = HashMap::with_capacity((tile_map.width * tile_map.height).into());
+
     commands
         .spawn()
         .insert(Name::new("Board"))
@@ -72,6 +76,8 @@ pub fn create_board(
                 Color::GRAY,
                 mine_image,
                 font,
+                Color::DARK_GRAY,
+                &mut covered_tiles,
             );
         });
 
@@ -82,6 +88,7 @@ pub fn create_board(
             size: board_size,
         },
         tile_size,
+        covered_tiles,
     });
 }
 
@@ -106,9 +113,16 @@ fn spawn_tiles(
     color: Color,
     mine_image: Handle<Image>,
     font: Handle<Font>,
+    covered_tile_color: Color,
+    covered_tiles: &mut HashMap<Coordinates, Entity>,
 ) {
     for (y, line) in tile_map.iter().enumerate() {
         for (x, tile) in line.iter().enumerate() {
+            let coordinates = Coordinates {
+                x: x as u16,
+                y: y as u16,
+            };
+
             let mut cmd = parent.spawn();
             cmd.insert_bundle(SpriteBundle {
                 sprite: Sprite {
@@ -125,9 +139,22 @@ fn spawn_tiles(
                 ..Default::default()
             })
             .insert(Name::new(format!("Tile ({}, {})", x, y)))
-            .insert(Coordinates {
-                x: x as u16,
-                y: y as u16,
+            .insert(coordinates);
+
+            cmd.with_children(|parent| {
+                let entity = parent
+                    .spawn_bundle(SpriteBundle {
+                        sprite: Sprite {
+                            custom_size: Some(Vec2::splat(size - padding as f32)),
+                            color: covered_tile_color,
+                            ..Default::default()
+                        },
+                        transform: Transform::from_xyz(0., 0., 2.),
+                        ..Default::default()
+                    })
+                    .insert(Name::new("Tile Cover"))
+                    .id();
+                covered_tiles.insert(coordinates, entity);
             });
 
             match tile {
