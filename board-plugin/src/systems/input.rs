@@ -21,7 +21,7 @@ pub fn input_handling(
         })
         .filter_map(|(button, position)| {
             board
-                .convert_mouse_to_coordinates(position, &window)
+                .convert_mouse_to_coordinates(position, window)
                 .map(|coordinates| (button, coordinates))
         })
     {
