@@ -1,5 +1,7 @@
 pub use board_options::*;
+pub use tile::*;
+pub use tile_map::*;
 
 mod board_options;
-pub(crate) mod tile;
-pub(crate) mod tile_map;
+mod tile;
+mod tile_map;

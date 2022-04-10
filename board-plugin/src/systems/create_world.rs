@@ -1,5 +1,5 @@
-use crate::components::Coordinates;
-use crate::resources::{tile_map::TileMap, BoardOptions, BoardPosition, TileSize};
+use crate::components::*;
+use crate::resources::*;
 use bevy::log;
 use bevy::prelude::*;
 
@@ -8,7 +8,11 @@ pub fn create_board(
     mut commands: Commands,
     board_options: Option<Res<BoardOptions>>,
     windows: Res<Windows>,
+    asset_server: Res<AssetServer>,
 ) {
+    let font = asset_server.load("fonts/pixeled.ttf");
+    let mine_image = asset_server.load("sprites/mine.png");
+
     let options = match board_options {
         None => Default::default(),
         Some(options) => options.clone(),
@@ -58,32 +62,15 @@ pub fn create_board(
                 })
                 .insert(Name::new("Board Background"));
 
-            for (y, line) in tile_map.iter().enumerate() {
-                for (x, _) in line.iter().enumerate() {
-                    parent
-                        .spawn_bundle(SpriteBundle {
-                            sprite: Sprite {
-                                color: Color::GRAY,
-                                custom_size: Some(Vec2::splat(
-                                    tile_size - options.tile_padding as f32,
-                                )),
-                                ..Default::default()
-                            },
-                            transform: Transform::from_xyz(
-                                (x as f32 * tile_size) + (tile_size / 2.),
-                                (y as f32 * tile_size) + (tile_size / 2.),
-                                // Closer to camera -> Drawn over background
-                                1.,
-                            ),
-                            ..Default::default()
-                        })
-                        .insert(Name::new(format!("Tile ({}, {})", x, y)))
-                        .insert(Coordinates {
-                            x: x as u16,
-                            y: y as u16,
-                        });
-                }
-            }
+            spawn_tiles(
+                parent,
+                &tile_map,
+                tile_size,
+                options.tile_padding,
+                Color::GRAY,
+                mine_image,
+                font,
+            );
         });
 }
 
@@ -98,4 +85,97 @@ fn calculate_adaptative_tile_size(
     let max_width = window.width() / width as f32;
     let max_height = window.height() / heigh as f32;
     max_width.min(max_height).clamp(min, max)
+}
+
+fn spawn_tiles(
+    parent: &mut ChildBuilder,
+    tile_map: &TileMap,
+    size: f32,
+    padding: f32,
+    color: Color,
+    mine_image: Handle<Image>,
+    font: Handle<Font>,
+) {
+    for (y, line) in tile_map.iter().enumerate() {
+        for (x, tile) in line.iter().enumerate() {
+            let mut cmd = parent.spawn();
+            cmd.insert_bundle(SpriteBundle {
+                sprite: Sprite {
+                    color,
+                    custom_size: Some(Vec2::splat(size - padding as f32)),
+                    ..Default::default()
+                },
+                transform: Transform::from_xyz(
+                    (x as f32 * size) + (size / 2.),
+                    (y as f32 * size) + (size / 2.),
+                    // Closer to camera -> Drawn over background
+                    1.,
+                ),
+                ..Default::default()
+            })
+            .insert(Name::new(format!("Tile ({}, {})", x, y)))
+            .insert(Coordinates {
+                x: x as u16,
+                y: y as u16,
+            });
+
+            match tile {
+                Tile::Mine => {
+                    cmd.insert(Mine).with_children(|parent| {
+                        parent.spawn_bundle(SpriteBundle {
+                            sprite: Sprite {
+                                custom_size: Some(Vec2::splat(size - padding)),
+                                ..Default::default()
+                            },
+                            transform: Transform::from_xyz(0., 0., 1.),
+                            texture: mine_image.clone(),
+                            ..Default::default()
+                        });
+                    });
+                }
+                Tile::Neighbor(count) => {
+                    cmd.insert(Neighbor { count: *count })
+                        .with_children(|parent| {
+                            parent.spawn_bundle(create_mine_count_text_bundle(
+                                *count,
+                                font.clone(),
+                                size - padding,
+                            ));
+                        });
+                }
+                Tile::Empty => (),
+            };
+        }
+    }
+}
+
+/// Generates the mine counter text 2D bundle for a given count
+fn create_mine_count_text_bundle(count: u8, font: Handle<Font>, size: f32) -> Text2dBundle {
+    let text = count.to_string();
+    let color = match count {
+        1 => Color::WHITE,
+        2 => Color::GREEN,
+        3 => Color::YELLOW,
+        4 => Color::ORANGE,
+        _ => Color::PURPLE,
+    };
+    Text2dBundle {
+        text: Text {
+            sections: vec![TextSection {
+                value: text,
+                style: TextStyle {
+                    color,
+                    font,
+                    font_size: size,
+                },
+            }],
+            alignment: TextAlignment {
+                vertical: VerticalAlign::Center,
+                horizontal: HorizontalAlign::Center,
+            },
+        },
+        // Z = 1 -> Closer to camera -> Drawn over background
+        transform: Transform::from_xyz(0., 0., 1.),
+        ..Default::default()
+    }
 }
