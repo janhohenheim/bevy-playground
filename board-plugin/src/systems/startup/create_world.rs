@@ -68,17 +68,15 @@ pub fn create_board(
                 })
                 .insert(Name::new("Board Background"));
 
-            spawn_tiles(
-                parent,
-                &tile_map,
-                tile_size,
-                options.tile_padding,
-                Color::GRAY,
+            let tile_graphics = TileGraphics {
+                tile_color: Color::GRAY,
                 mine_image,
                 font,
-                Color::DARK_GRAY,
-                &mut covered_tiles,
-            );
+                covered_tile_color: Color::DARK_GRAY,
+                size: tile_size,
+                padding: options.tile_padding,
+            };
+            spawn_tiles(parent, &tile_map, tile_graphics, &mut covered_tiles);
         });
 
     commands.insert_resource(Board {
@@ -105,15 +103,19 @@ fn calculate_adaptative_tile_size(
     max_width.min(max_height).clamp(min, max)
 }
 
-fn spawn_tiles(
-    parent: &mut ChildBuilder,
-    tile_map: &TileMap,
-    size: f32,
-    padding: f32,
-    color: Color,
+struct TileGraphics {
+    tile_color: Color,
     mine_image: Handle<Image>,
     font: Handle<Font>,
     covered_tile_color: Color,
+    size: f32,
+    padding: f32,
+}
+
+fn spawn_tiles(
+    parent: &mut ChildBuilder,
+    tile_map: &TileMap,
+    graphics: TileGraphics,
     covered_tiles: &mut HashMap<Coordinates, Entity>,
 ) {
     for (y, line) in tile_map.iter().enumerate() {
@@ -126,13 +128,13 @@ fn spawn_tiles(
             let mut cmd = parent.spawn();
             cmd.insert_bundle(SpriteBundle {
                 sprite: Sprite {
-                    color,
-                    custom_size: Some(Vec2::splat(size - padding as f32)),
+                    color: graphics.tile_color,
+                    custom_size: Some(Vec2::splat(graphics.size - graphics.padding as f32)),
                     ..Default::default()
                 },
                 transform: Transform::from_xyz(
-                    (x as f32 * size) + (size / 2.),
-                    (y as f32 * size) + (size / 2.),
+                    (x as f32 * graphics.size) + (graphics.size / 2.),
+                    (y as f32 * graphics.size) + (graphics.size / 2.),
                     // Closer to camera -> Drawn over background
                     1.,
                 ),
@@ -145,8 +147,8 @@ fn spawn_tiles(
                 let entity = parent
                     .spawn_bundle(SpriteBundle {
                         sprite: Sprite {
-                            custom_size: Some(Vec2::splat(size - padding as f32)),
-                            color: covered_tile_color,
+                            custom_size: Some(Vec2::splat(graphics.size - graphics.padding as f32)),
+                            color: graphics.covered_tile_color,
                             ..Default::default()
                         },
                         transform: Transform::from_xyz(0., 0., 2.),
@@ -162,11 +164,11 @@ fn spawn_tiles(
                     cmd.insert(Mine).with_children(|parent| {
                         parent.spawn_bundle(SpriteBundle {
                             sprite: Sprite {
-                                custom_size: Some(Vec2::splat(size - padding)),
+                                custom_size: Some(Vec2::splat(graphics.size - graphics.padding)),
                                 ..Default::default()
                             },
                             transform: Transform::from_xyz(0., 0., 1.),
-                            texture: mine_image.clone(),
+                            texture: graphics.mine_image.clone(),
                             ..Default::default()
                         });
                     });
@@ -176,8 +178,8 @@ fn spawn_tiles(
                         .with_children(|parent| {
                             parent.spawn_bundle(create_mine_count_text_bundle(
                                 *count,
-                                font.clone(),
-                                size - padding,
+                                graphics.font.clone(),
+                                graphics.size - graphics.padding,
                             ));
                         });
                 }

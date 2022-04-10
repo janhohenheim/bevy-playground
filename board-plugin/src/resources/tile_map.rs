@@ -120,7 +120,7 @@ impl DerefMut for TileMap {
 }
 
 /// Delta coordinates for all 8 square neighbors
-/// ```
+/// ```{bash}
 /// *--------*-------*-------*
 /// | -1, 1  | 0, 1  | 1, 1  |
 /// |--------|-------|-------|

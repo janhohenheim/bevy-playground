@@ -1,5 +1,6 @@
 mod bounds;
 pub mod components;
+mod events;
 pub mod resources;
 mod systems;
 
@@ -15,7 +16,10 @@ pub struct BoardPlugin;
 impl Plugin for BoardPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(systems::startup::create_board)
-            .add_system(systems::input_handling);
+            .add_system(systems::input_handling)
+            .add_system(systems::uncover::trigger_event_handler)
+            .add_system(systems::uncover::uncover_tiles)
+            .add_event::<events::TileTriggerEvent>();
         log::info!("Loaded board plugin");
         #[cfg(feature = "debug")]
         {

@@ -47,3 +47,59 @@ impl Display for Coordinates {
         write!(f, "({}, {})", self.x, self.y)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn safely_handles_underflow_with_coordinates() {
+        let coordinates = Coordinates { x: 0, y: 0 };
+        let coordinates = coordinates - Coordinates { x: 1, y: 1 };
+        assert_eq!(coordinates, Coordinates { x: 0, y: 0 });
+    }
+
+    #[test]
+    #[should_panic(expected = "attempt to add with overflow")]
+    fn panics_on_overflow_with_coordinates() {
+        let coordinates = Coordinates {
+            x: 40_000,
+            y: 40_000,
+        };
+        let coordinates = coordinates
+            + Coordinates {
+                x: 40_000,
+                y: 40_000,
+            };
+        assert_eq!(
+            coordinates,
+            Coordinates {
+                x: 20_000,
+                y: 20_000
+            }
+        );
+    }
+
+    #[test]
+    fn underflows_with_i8() {
+        let coordinates = Coordinates { x: 0, y: 0 };
+        let coordinates = coordinates + (-1, -1);
+        assert_eq!(coordinates, Coordinates { x: 65535, y: 65535 });
+    }
+
+    #[test]
+    fn safely_handles_potential_overflows_with_i8() {
+        let coordinates = Coordinates {
+            x: 40_000,
+            y: 40_000,
+        };
+        let coordinates = coordinates + (100, 100);
+        assert_eq!(
+            coordinates,
+            Coordinates {
+                x: 40_100,
+                y: 40_100
+            }
+        );
+    }
+}
