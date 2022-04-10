@@ -4,22 +4,42 @@ mod events;
 pub mod resources;
 mod systems;
 
+use bevy::ecs::schedule::StateData;
 use bevy::log;
 use bevy::prelude::*;
 #[cfg(feature = "debug")]
 use bevy_inspector_egui::RegisterInspectable;
 #[cfg(feature = "debug")]
 use components::*;
+use resources::Board;
 
-pub struct BoardPlugin;
+pub struct BoardPlugin<T> {
+    pub current_state: T,
+}
 
-impl Plugin for BoardPlugin {
+impl<T: StateData> Plugin for BoardPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(systems::startup::create_board)
-            .add_system(systems::input_handling)
-            .add_system(systems::uncover::trigger_event_handler)
-            .add_system(systems::uncover::uncover_tiles)
-            .add_event::<events::TileTriggerEvent>();
+        app.add_system_set(
+            // Active when the initial state is pushed onto the stack
+            SystemSet::on_enter(self.current_state.clone())
+                .with_system(systems::startup::create_board),
+        )
+        .add_system_set(
+            // Active when the initial state active, i.e. on top of the stack
+            SystemSet::on_update(self.current_state.clone())
+                .with_system(systems::input_handling)
+                .with_system(systems::uncover::trigger_event_handler),
+        )
+        .add_system_set(
+            // Active when the initial state is in the stack, no matter where
+            SystemSet::on_in_stack_update(self.current_state.clone())
+                .with_system(systems::uncover::uncover_tiles),
+        )
+        .add_system_set(
+            // Active when the initial state is popped off the stack
+            SystemSet::on_exit(self.current_state.clone()).with_system(Self::cleanup_board),
+        )
+        .add_event::<events::TileTriggerEvent>();
         log::info!("Loaded board plugin");
         #[cfg(feature = "debug")]
         {
@@ -28,5 +48,12 @@ impl Plugin for BoardPlugin {
                 .register_inspectable::<Mine>()
                 .register_inspectable::<Uncovered>();
         }
+    }
+}
+
+impl<T> BoardPlugin<T> {
+    fn cleanup_board(mut commands: Commands, board: Res<Board>) {
+        commands.entity(board.entity).despawn_recursive();
+        commands.remove_resource::<Board>();
     }
 }

@@ -50,7 +50,7 @@ pub fn create_board(
     let mut covered_tiles = HashMap::with_capacity((tile_map.width * tile_map.height).into());
     let mut safe_start_entity = None;
 
-    commands
+    let board_entity = commands
         .spawn()
         .insert(Name::new("Board"))
         .insert(Transform::from_translation(board_position))
@@ -84,7 +84,8 @@ pub fn create_board(
                 &mut covered_tiles,
                 &mut safe_start_entity,
             );
-        });
+        })
+        .id();
 
     commands.insert_resource(Board {
         tile_map,
@@ -94,6 +95,7 @@ pub fn create_board(
         },
         tile_size,
         covered_tiles,
+        entity: board_entity,
     });
 
     if options.safe_start {
