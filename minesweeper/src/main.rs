@@ -9,6 +9,8 @@ use bevy_inspector_egui::WorldInspectorPlugin;
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum AppState {
     InGame,
+    Paused,
+    Restarting,
     Out,
 }
 
@@ -61,11 +63,25 @@ fn state_handler(mut state: ResMut<State<AppState>>, keys: Res<Input<KeyCode>>) 
 
     if keys.just_pressed(KeyCode::G) {
         log::debug!("loading detected");
-        if state.current() == &AppState::Out {
-            log::info!("loading game");
+        log::info!("loading game");
+        state
+            .set(AppState::Restarting)
+            .unwrap_or_else(|error| panic!("Failed to restart game: {}", error))
+    }
+
+    if keys.just_pressed(KeyCode::Escape) {
+        log::debug!("pause detected");
+
+        if state.current() == &AppState::Paused {
+            log::info!("resuming game");
             state
-                .set(AppState::InGame)
-                .unwrap_or_else(|error| panic!("Failed to load game: {}", error))
+                .pop()
+                .unwrap_or_else(|error| panic!("Failed to resume game: {}", error))
+        } else {
+            log::info!("pausing game");
+            state
+                .push(AppState::Paused)
+                .unwrap_or_else(|error| panic!("Failed to pause game: {}", error))
         }
     }
 }
