@@ -63,10 +63,17 @@ fn state_handler(mut state: ResMut<State<AppState>>, keys: Res<Input<KeyCode>>) 
 
     if keys.just_pressed(KeyCode::G) {
         log::debug!("loading detected");
-        log::info!("loading game");
+        if state.current() != &AppState::Paused {
+            log::info!("loading game");
+            state
+                .set(AppState::Restarting)
+                .unwrap_or_else(|error| panic!("Failed to initiate game restart: {}", error))
+        }
+    }
+    if state.current() == &AppState::Restarting {
         state
-            .set(AppState::Restarting)
-            .unwrap_or_else(|error| panic!("Failed to restart game: {}", error))
+            .set(AppState::InGame)
+            .unwrap_or_else(|error| panic!("Failed to finish game restart: {}", error));
     }
 
     if keys.just_pressed(KeyCode::Escape) {
