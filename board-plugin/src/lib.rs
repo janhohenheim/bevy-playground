@@ -38,7 +38,7 @@ impl<T: StateData> Plugin for BoardPlugin<T> {
         )
         .add_system_set(
             // Active when the initial state is popped off the stack
-            SystemSet::on_exit(initial_state.clone()).with_system(Self::cleanup_board),
+            SystemSet::on_exit(initial_state).with_system(Self::cleanup_board),
         )
         .add_event::<events::TileTriggerEvent>();
         log::info!("Loaded board plugin");
