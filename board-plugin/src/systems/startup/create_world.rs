@@ -45,7 +45,8 @@ pub fn create_board(
         BoardPosition::Custom(position) => position,
     };
 
-    let mut covered_tiles = HashMap::with_capacity((tile_map.width * tile_map.height).into());
+    let tile_count = (tile_map.width * tile_map.height).into();
+    let mut covered_tiles = HashMap::with_capacity(tile_count);
     let mut safe_start_entity = None;
 
     let board_entity = commands
@@ -92,6 +93,7 @@ pub fn create_board(
         tile_size,
         covered_tiles,
         entity: board_entity,
+        marked_tiles: Vec::with_capacity(tile_count),
     });
 
     if options.safe_start {

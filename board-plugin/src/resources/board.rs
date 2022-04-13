@@ -7,6 +7,7 @@ pub struct Board {
     pub bounds: Bounds2,
     pub tile_size: f32,
     pub covered_tiles: HashMap<Coordinates, Entity>,
+    pub marked_tiles: Vec<Coordinates>,
     pub entity: Entity,
 }
 
@@ -34,14 +35,25 @@ impl Board {
         })
     }
 
-    /// Retrieve a covered entity
+    /// Retrieve a tile entity if it is still covered and unmarked.
     pub fn get_covered_tile(&self, coordinates: Coordinates) -> Option<Entity> {
-        self.covered_tiles.get(&coordinates).copied()
+        if self.is_marked(coordinates) {
+            None
+        } else {
+            self.covered_tiles.get(&coordinates).copied()
+        }
     }
 
     /// Try to uncover a tile
+    /// Will remove a mark without uncovering the tile and return `None`
     pub fn uncover_tile(&mut self, coordinates: Coordinates) -> Option<Entity> {
-        self.covered_tiles.remove(&coordinates)
+        if self.is_marked(coordinates) {
+            self.unmark_tile(coordinates)
+                .expect("Failed to unmark tile that is saved as marked tile");
+            None
+        } else {
+            self.covered_tiles.remove(&coordinates)
+        }
     }
 
     /// Retrieve adjacent covered tiles
@@ -50,5 +62,33 @@ impl Board {
             .safe_square_at(coordinates)
             .filter_map(|coordinates| self.get_covered_tile(coordinates))
             .collect()
+    }
+
+    /// Toggles marked state of a tile and returns the new state
+    pub fn toggle_mark(&mut self, coordinates: Coordinates) -> Option<(Entity, bool)> {
+        let entity = *self.covered_tiles.get(&coordinates)?;
+        let new_state = if self.is_marked(coordinates) {
+            self.unmark_tile(coordinates)
+                .expect("Failed to unmark tile that is saved as marked tile");
+            false
+        } else {
+            self.marked_tiles.push(coordinates);
+            true
+        };
+        Some((entity, new_state))
+    }
+
+    fn unmark_tile(&mut self, coordinates: Coordinates) -> Option<Coordinates> {
+        self.marked_tiles
+            .drain_filter(|marked_coordinates| *marked_coordinates == coordinates)
+            .next()
+    }
+
+    pub fn is_completed(&self) -> bool {
+        self.tile_map.mine_count as usize == self.covered_tiles.len()
+    }
+
+    fn is_marked(&self, coordinates: Coordinates) -> bool {
+        self.marked_tiles.contains(&coordinates)
     }
 }

@@ -1,3 +1,5 @@
+#![feature(drain_filter)]
+
 pub mod assets;
 mod bounds;
 pub mod components;
@@ -34,13 +36,18 @@ impl<T: StateData> Plugin for BoardPlugin<T> {
         .add_system_set(
             // Active when the initial state is in the stack, no matter where
             SystemSet::on_in_stack_update(initial_state.clone())
-                .with_system(systems::uncover::uncover_tiles),
+                .with_system(systems::uncover::uncover_tiles)
+                .with_system(systems::mark::mark_tiles),
         )
         .add_system_set(
             // Active when the initial state is popped off the stack
             SystemSet::on_exit(initial_state).with_system(Self::cleanup_board),
         )
-        .add_event::<events::TileTriggerEvent>();
+        .add_event::<events::TileTriggerEvent>()
+        .add_event::<events::BoardCompletedEvent>()
+        .add_event::<events::TileMarkEvent>()
+        .add_event::<events::MineExplodedEvent>();
+
         log::info!("Loaded board plugin");
         #[cfg(feature = "debug")]
         {

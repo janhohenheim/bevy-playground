@@ -1,5 +1,5 @@
 use crate::components::*;
-use crate::events::TileTriggerEvent;
+use crate::events::{BoardCompletedEvent, MineExplodedEvent, TileTriggerEvent};
 use crate::resources::Board;
 use bevy::log;
 use bevy::prelude::*;
@@ -23,6 +23,8 @@ pub fn uncover_tiles(
     // Entities in covered_tiles, which have the sprite component
     children: Query<(Entity, &Parent), With<Uncovered>>,
     parents: Query<(&Coordinates, Option<&Mine>, Option<&Neighbor>)>,
+    mut board_completed_event_writer: EventWriter<BoardCompletedEvent>,
+    mut mine_exploded_event_writer: EventWriter<MineExplodedEvent>,
 ) {
     for (entity, parent) in children.iter() {
         // Remove tile cover
@@ -44,8 +46,14 @@ pub fn uncover_tiles(
             Some(_tile) => log::debug!("Uncovered tile at {} (entity: {:?})", coordinates, entity),
         }
 
+        if board.is_completed() {
+            log::info!("Board completed!");
+            board_completed_event_writer.send(BoardCompletedEvent);
+        }
+
         if mine.is_some() {
-            log::info!("Boom!")
+            log::info!("Boom!");
+            mine_exploded_event_writer.send(MineExplodedEvent);
         } else if neighbor.is_none() {
             // Propagate event
             for entity in board.get_covered_neighbors(coordinates) {
